@@ -190,7 +190,7 @@ export default function App() {
               <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#0070C0", marginBottom: 4 }}>Plano recomendado para seu perfil</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#1A3A5C" }}>{plan.name} — {fmt(plan.price)}<span style={{ fontSize: 14, fontWeight: 600, color: "#3D5A80" }}>/mês</span></div>
               <div style={{ fontSize: 14, color: "#3D5A80", marginTop: 6, lineHeight: 1.6 }}>
-                {agendas === 1 ? "1 agenda integrada" : `Até ${plan.agendas} agendas integradas`} · {plan.atend.toLocaleString("pt-BR")} atendimentos inclusos/mês · Setup: <SetupBadge plan={plan} />
+                {agendas === 1 ? "1 agenda integrada" : plan.name === "Pro" ? "A partir de 6 agendas integradas" : `Até ${plan.agendas} agendas integradas`} · {plan.atend.toLocaleString("pt-BR")} atendimentos inclusos/mês · Setup: <SetupBadge plan={plan} />
               </div>
               {slotsEstimados > plan.atend && (
                 <div style={{ fontSize: 13, color: "#E65100", marginTop: 6, fontWeight: 600 }}>
