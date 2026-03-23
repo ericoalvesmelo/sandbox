@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 
 const PLANS = {
   starter: { name: "Starter", price: 590, setup: 1990, setupFree: true, agendas: 1, atend: 400, reativ: 50 },
-  plus: { name: "Plus", price: 990, setup: 1990, setupFree: true, agendas: 3, atend: 1000, reativ: 200 },
+  plus: { name: "Plus", price: 990, setup: 1990, setupFree: true, agendas: 5, atend: 1000, reativ: 200 },
   pro: { name: "Pro", price: 1990, setup: 2990, setupFree: true, agendas: 8, atend: 2500, reativ: 500 },
 };
 
@@ -11,7 +11,7 @@ const fmtPct = v => v + "%";
 
 function suggestPlan(agendas, slotsEstimados) {
   // Por agendas primeiro
-  if (agendas >= 4) return PLANS.pro;
+  if (agendas >= 6) return PLANS.pro;
   if (agendas >= 2) return PLANS.plus;
   // Por volume (mesmo com 1 agenda, pode precisar de plano maior pelo volume)
   if (slotsEstimados > 1000) return PLANS.pro;
@@ -116,7 +116,7 @@ export default function App() {
     const reativados = Math.round(feitas * 0.05);
     const recReativacao = reativados * ticket;
 
-    const ganhoTotal = recRecuperada + custoEvitado + recReativacao;
+    const ganhoTotal = recRecuperada + recReativacao;
     const roi = ganhoTotal - plan.price;
     const roiAnual = roi * 12;
     const mult = plan.price > 0 ? ganhoTotal / plan.price : 0;
@@ -360,9 +360,9 @@ export default function App() {
               </div>
               <div style={{ background: "#fff", borderRadius: 10, padding: "16px 18px", fontSize: 15, color: "#1A3A5C", lineHeight: 2 }}>
                 {!lowTicket && <>
-                  <div>→ Bastam <strong style={{ color: "#0070C0" }}>{r.minConsultas} consulta{r.minConsultas !== 1 ? "s" : ""} a mais por mês</strong> para a Dentzi se pagar</div>
+                  <div>→ {r.minConsultas === 1 ? "Basta" : "Bastam"} <strong style={{ color: "#0070C0" }}>{r.minConsultas} consulta{r.minConsultas !== 1 ? "s" : ""} a mais por mês</strong> para a Dentzi se pagar</div>
                   <div>→ Isso representa <strong style={{ color: "#0070C0" }}>{((r.minConsultas / r.slots) * 100).toFixed(1)}%</strong> da sua agenda de {r.slots} horários</div>
-                  {r.payback && <div>→ A Dentzi se paga nos primeiros <strong style={{ color: "#0070C0" }}>{r.payback} dias do mês</strong></div>}
+                  {r.payback && <div>→ A Dentzi se paga {r.payback === 1 ? "no primeiro" : "nos primeiros"} <strong style={{ color: "#0070C0" }}>{r.payback} {r.payback === 1 ? "dia" : "dias"} do mês</strong></div>}
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #C9D6E3", color: "#3D5A80" }}>
                     Você perde <strong style={{ color: "#E65100" }}>{fmt(r.custoNs)}/mês</strong> em faltas. A Dentzi custa apenas <strong style={{ color: "#E65100" }}>{((plan.price / r.custoNs) * 100).toFixed(1)}%</strong> desse valor.
                   </div>
@@ -390,8 +390,8 @@ export default function App() {
 
         {/* Clínicas Fundadoras */}
         <div style={{ background: "linear-gradient(135deg, #1A3A5C, #0B5A8C)", borderRadius: 18, padding: "36px 32px", marginTop: 28, textAlign: "center", color: "#fff" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#00D4E8", marginBottom: 10 }}>Programa exclusivo</div>
-          <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.3, marginBottom: 12 }}>Estamos em busca das Clínicas e Dentistas<br />Fundadores da Dentzi</div>
+          <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#00D4E8", marginBottom: 10 }}>Dentzi Founders</div>
+          <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.3, marginBottom: 12 }}>Programa Dentzi Founders<br />Estamos em busca das primeiras Clínicas e Dentistas Fundadores</div>
           <div style={{ fontSize: 15, color: "#C9D6E3", lineHeight: 1.7, maxWidth: 600, margin: "0 auto 20px" }}>
             As primeiras 10 clínicas terão <strong style={{ color: "#00F5D4" }}>30% de desconto vitalício</strong> na mensalidade e acesso direto aos fundadores para moldar o produto juntos. Venha fazer parte desta revolução.
           </div>
