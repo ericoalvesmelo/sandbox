@@ -1,22 +1,57 @@
 import { useState, useMemo } from "react";
 
 const PLANS = {
-  starter: { name: "Starter", price: 590, setup: 1990, setupFree: true, agendas: 1, atend: 400, reativ: 50 },
-  plus: { name: "Plus", price: 990, setup: 1990, setupFree: true, agendas: 5, atend: 1000, reativ: 200 },
-  pro: { name: "Pro", price: 1990, setup: 2990, setupFree: true, agendas: 8, atend: 2500, reativ: 500 },
+  start: {
+    name: "Start",
+    price: 99.90,
+    rangeMin: 79.90,
+    rangeMax: 99.90,
+    setup: 0,
+    agendas: 1,
+    agend: 50,
+    reativ: 0,
+    excedente: 1.99,
+    suporte: "Email",
+    dashboard: "Básico",
+  },
+  pro: {
+    name: "Pro",
+    price: 199.90,
+    rangeMin: 199.90,
+    rangeMax: 249.90,
+    setup: 0,
+    agendas: 1,
+    agend: 150,
+    reativ: 50,
+    excedente: 1.49,
+    suporte: "WhatsApp prioritário",
+    dashboard: "Completo",
+  },
+  max: {
+    name: "Max",
+    price: 399.90,
+    rangeMin: 399.90,
+    rangeMax: 499.90,
+    setup: 0,
+    agendas: 3,
+    agend: 400,
+    reativ: 150,
+    excedente: 0.99,
+    suporte: "CS dedicado",
+    dashboard: "Completo + exportação",
+  },
 };
 
-const fmt = v => "R$ " + Math.round(v).toLocaleString("pt-BR");
+const fmt = v => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: v % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 });
 const fmtPct = v => v + "%";
 
 function suggestPlan(agendas, slotsEstimados) {
-  // Por agendas primeiro
-  if (agendas >= 6) return PLANS.pro;
-  if (agendas >= 2) return PLANS.plus;
-  // Por volume (mesmo com 1 agenda, pode precisar de plano maior pelo volume)
-  if (slotsEstimados > 1000) return PLANS.pro;
-  if (slotsEstimados > 400) return PLANS.plus;
-  return PLANS.starter;
+  if (agendas >= 4) return null;
+  if (agendas >= 2) return PLANS.max;
+  if (slotsEstimados > 400) return null;
+  if (slotsEstimados > 150) return PLANS.max;
+  if (slotsEstimados > 50) return PLANS.pro;
+  return PLANS.start;
 }
 
 function Slider({ label, value, min, max, step, onChange, format, hint, accent, extra }) {
@@ -59,11 +94,16 @@ function Card({ label, value, sub, color }) {
   );
 }
 
-function SetupBadge({ plan }) {
+function ValidationBadge() {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <span style={{ textDecoration: "line-through", color: "#8FA4B8", fontSize: 14, fontWeight: 600 }}>{fmt(plan.setup)}</span>
-      <span style={{ background: "#2E7D32", color: "#fff", fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 20, letterSpacing: "0.04em" }}>GRÁTIS</span>
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      background: "#E6510015", color: "#E65100",
+      border: "1px solid #E6510033",
+      fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+      letterSpacing: "0.06em", padding: "4px 10px", borderRadius: 20,
+    }}>
+      ● Modelo em validação
     </span>
   );
 }
@@ -94,6 +134,7 @@ export default function App() {
   const agendas = tipo === "dentista" ? 1 : numDentistas;
   const slotsEstimados = dias * cpd;
   const plan = suggestPlan(agendas, slotsEstimados);
+  const effectivePlan = plan || PLANS.max; // fallback for Enterprise ROI calc
   const cpdPerDentist = agendas > 0 ? (cpd / agendas) : cpd;
 
   const r = useMemo(() => {
@@ -107,55 +148,57 @@ export default function App() {
     const cfNs = nsSlots * chora;
     const custoNs = lucCess + cfNs;
 
-    // Improvement slider: +imp% of consultas realizadas (feitas)
     const consultasRecuperadas = Math.round(feitas * imp / 100);
     const recRecuperada = consultasRecuperadas * ticket;
     const custoEvitado = consultasRecuperadas * chora;
 
-    // Reactivation: 5% of consultas realizadas
     const reativados = Math.round(feitas * 0.05);
     const recReativacao = reativados * ticket;
 
     const ganhoTotal = recRecuperada + recReativacao;
-    const roi = ganhoTotal - plan.price;
+    const planPrice = effectivePlan.price;
+    const roi = ganhoTotal - planPrice;
     const roiAnual = roi * 12;
-    const mult = plan.price > 0 ? ganhoTotal / plan.price : 0;
-    const minConsultas = Math.ceil(plan.price / ticket);
-    const payback = ganhoTotal > 0 ? Math.ceil(plan.price / (ganhoTotal / 30)) : null;
-    const rc = roi > 5000 ? "#2E7D32" : roi > 2000 ? "#0070C0" : roi > 0 ? "#2E7D32" : roi > -300 ? "#D4A017" : "#CC0000";
+    const mult = planPrice > 0 ? ganhoTotal / planPrice : 0;
+    const minConsultas = Math.ceil(planPrice / ticket);
+    const payback = ganhoTotal > 0 ? Math.ceil(planPrice / (ganhoTotal / 30)) : null;
+    const rc = roi > 2000 ? "#2E7D32" : roi > 500 ? "#0070C0" : roi > 0 ? "#2E7D32" : roi > -50 ? "#D4A017" : "#CC0000";
 
     return { slots, nsSlots, feitas, recAtual, chora, lucCess, cfNs, custoNs, consultasRecuperadas, recRecuperada, custoEvitado, reativados, recReativacao, ganhoTotal, roi, roiAnual, mult, minConsultas, payback, rc };
-  }, [dias, cpd, ns, ticket, cf, imp, plan.price]);
+  }, [dias, cpd, ns, ticket, cf, imp, effectivePlan.price]);
 
   const lowTicket = ticket < 100;
 
   const v = lowTicket
     ? { t: "Perfil com ROI desfavorável", s: "Com ticket abaixo de R$ 100, o retorno tende a não cobrir o investimento. Dentzi funciona melhor com atendimento particular ou misto.", c: "#CC0000" }
-    : r.roi > 5000
-    ? { t: "ROI excepcional para sua clínica", s: "Sua estrutura tem alto potencial de recuperação. A automação gera retorno significativo já no primeiro mês.", c: "#2E7D32" }
     : r.roi > 2000
-    ? { t: "Retorno consistente e previsível", s: "Sua clínica recupera o investimento em poucos dias de operação. Perfil ideal para automação de agenda.", c: "#0070C0" }
+    ? { t: "ROI excepcional para sua clínica", s: "Sua estrutura tem alto potencial de recuperação. O agente se paga várias vezes no primeiro mês.", c: "#2E7D32" }
+    : r.roi > 500
+    ? { t: "Retorno consistente e previsível", s: "Sua clínica recupera o investimento em poucos dias. Perfil ideal para automação de agenda.", c: "#0070C0" }
     : r.roi > 0
-    ? { t: "Retorno positivo — vale o investimento", s: "A automação se paga e ainda gera sobra. Quanto maior seu ticket e agenda, mais esse número cresce.", c: "#2E7D32" }
-    : r.roi > -300
-    ? { t: "No limite — revise suas premissas", s: "Verifique se o ticket e a agenda refletem sua realidade. Pequenos ajustes podem mudar o cenário.", c: "#D4A017" }
+    ? { t: "Retorno positivo — vale o investimento", s: "O agente se paga e ainda gera sobra. Quanto maior seu ticket e agenda, mais esse número cresce.", c: "#2E7D32" }
+    : r.roi > -50
+    ? { t: "No limite — revise suas premissas", s: "Verifique se o ticket e a agenda refletem sua realidade. Pequenos ajustes mudam o cenário.", c: "#D4A017" }
     : { t: "Perfil com ROI desfavorável", s: "Com esses números, o retorno não cobre o investimento hoje. Avalie se sua agenda ou ticket podem crescer.", c: "#CC0000" };
 
   return (
     <div style={{ fontFamily: "'Manrope','Segoe UI',sans-serif", background: "#F0F4F8", minHeight: "100vh", color: "#1A3A5C" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{margin:0}input[type=range]{-webkit-appearance:none}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{margin:0}input[type=range]{-webkit-appearance:none}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none}`}</style>
 
       {/* Header */}
       <div style={{ borderBottom: "0.5px solid #C9D6E3", padding: "16px 28px", display: "flex", alignItems: "center", gap: 18, background: "#fff" }}>
-        <span style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(90deg,#1A3A5C,#00D4E8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>dentzi</span>
+        <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
+          <span style={{ color: "#1A3A5C" }}>dent</span>
+          <span style={{ background: "linear-gradient(90deg, #0070C0, #00D4E8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>zi</span>
+        </span>
         <div style={{ width: 1, height: 20, background: "#C9D6E3" }} />
         <span style={{ fontSize: 12, fontWeight: 600, color: "#8FA4B8", letterSpacing: "0.1em", textTransform: "uppercase" }}>Simulador de Retorno</span>
-        <div style={{ marginLeft: "auto", fontSize: 13, color: "#8FA4B8" }}>Quanto você recupera com a agenda cheia?</div>
+        <div style={{ marginLeft: "auto", fontSize: 13, color: "#8FA4B8" }}>Seu agente de IA custa menos de 1% de cada consulta que ele agenda para você.</div>
       </div>
 
       <div style={{ maxWidth: 1020, margin: "0 auto", padding: "28px 22px" }}>
 
-        {/* TIPO SELECTOR — inline, single page */}
+        {/* TIPO SELECTOR */}
         <div style={{ background: "#fff", border: "0.5px solid #C9D6E3", borderRadius: 14, padding: "20px 24px", marginBottom: 20, boxShadow: "none" }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#3D5A80", marginBottom: 14 }}>Qual é o seu perfil?</div>
           <div style={{ display: "flex", gap: 12, marginBottom: tipo === "clinica" ? 20 : 0 }}>
@@ -184,26 +227,52 @@ export default function App() {
             </div>
           )}
 
-          {/* Plan recommendation — always visible */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#E8EEF4", borderRadius: 10, border: "1px solid #0070C044" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#0070C0", marginBottom: 4 }}>Plano recomendado para seu perfil</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#1A3A5C" }}>{plan.name} — {fmt(plan.price)}<span style={{ fontSize: 14, fontWeight: 600, color: "#3D5A80" }}>/mês</span></div>
-              <div style={{ fontSize: 14, color: "#3D5A80", marginTop: 6, lineHeight: 1.6 }}>
-                {agendas === 1 ? "1 agenda integrada" : plan.name === "Pro" ? "A partir de 6 agendas integradas" : `Até ${plan.agendas} agendas integradas`} · {plan.atend.toLocaleString("pt-BR")} atendimentos inclusos/mês · Setup: <SetupBadge plan={plan} />
-              </div>
-              {slotsEstimados > plan.atend && (
-                <div style={{ fontSize: 13, color: "#E65100", marginTop: 6, fontWeight: 600 }}>
-                  ⚠ Sua agenda tem ~{slotsEstimados.toLocaleString("pt-BR")} consultas/mês — acima do incluso ({plan.atend.toLocaleString("pt-BR")}). O excedente é cobrado a parte.
+          {/* Plan recommendation */}
+          {plan !== null ? (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 20px", background: "#E8EEF4", borderRadius: 10, border: "1px solid #0070C044" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#0070C0" }}>Plano recomendado para seu perfil</div>
+                  <ValidationBadge />
                 </div>
-              )}
-              {tipo === "dentista" && slotsEstimados > 400 && plan.name !== "Starter" && (
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#1A3A5C" }}>
+                  {plan.name} — {fmt(plan.rangeMin)} a {fmt(plan.rangeMax)}<span style={{ fontSize: 14, fontWeight: 600, color: "#3D5A80" }}>/mês</span>
+                </div>
+                <div style={{ fontSize: 14, color: "#3D5A80", marginTop: 6, lineHeight: 1.7 }}>
+                  {agendas === 1 ? "1 agenda integrada" : `Até ${plan.agendas} agendas integradas`} · {plan.agend.toLocaleString("pt-BR")} agendamentos inclusos/mês
+                  {plan.reativ > 0 && <> · Até {plan.reativ} campanhas de reativação/mês</>}
+                  {plan.reativ === 0 && <> · <span style={{ color: "#8FA4B8" }}>Reativação disponível no plano Pro</span></>}
+                </div>
                 <div style={{ fontSize: 13, color: "#3D5A80", marginTop: 4 }}>
-                  Plano sugerido pelo volume de consultas ({slotsEstimados}/mês), mesmo com 1 agenda.
+                  Setup grátis para as primeiras 100 clínicas
                 </div>
-              )}
+                {slotsEstimados > plan.agend && (
+                  <div style={{ fontSize: 13, color: "#E65100", marginTop: 6, fontWeight: 600 }}>
+                    ⚠ Sua agenda tem ~{slotsEstimados.toLocaleString("pt-BR")} agendamentos/mês — acima do incluso ({plan.agend.toLocaleString("pt-BR")}). Excedente: R$ {plan.excedente.toFixed(2).replace(".", ",")}/agendamento.
+                  </div>
+                )}
+                {tipo === "dentista" && slotsEstimados > 50 && plan.name !== "Start" && (
+                  <div style={{ fontSize: 13, color: "#3D5A80", marginTop: 4 }}>
+                    Plano sugerido pelo volume de agendamentos ({slotsEstimados}/mês), mesmo com 1 agenda.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ padding: "20px 24px", background: "linear-gradient(135deg, #1A3A5C08, #0B5A8C08)", borderRadius: 10, border: "2px solid #1A3A5C33" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#1A3A5C" }}>Enterprise — Plano sob medida</div>
+                <ValidationBadge />
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#1A3A5C", marginBottom: 8 }}>Sua clínica precisa de um plano sob medida</div>
+              <div style={{ fontSize: 14, color: "#3D5A80", lineHeight: 1.6, marginBottom: 14 }}>
+                Com {agendas} agendas e ~{slotsEstimados.toLocaleString("pt-BR")} agendamentos/mês, recomendamos uma conversa para montar o plano ideal.
+              </div>
+              <a href="https://wa.me/5511944823322?text=Ol%C3%A1%20%C3%89rico%2C%20vi%20o%20simulador%20da%20Dentzi%20e%20gostaria%20de%20saber%20mais%20sobre%20a%20solu%C3%A7%C3%A3o." target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10, background: "#1A3A5C", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+                Falar com o fundador →
+              </a>
+            </div>
+          )}
         </div>
 
         {/* MAIN GRID */}
@@ -335,7 +404,12 @@ export default function App() {
               </div>
               <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
                 <Card label="Custo fixo evitado" value={fmt(r.custoEvitado)} sub="hora clínica que volta a produzir" color="#2E7D32" />
-                <Card label="Reativação de inativos" value={fmt(r.recReativacao)} sub={"~" + r.reativados + " pacientes reativados/mês (5% da base)"} color="#2E7D32" />
+                <Card
+                  label="Reativação de inativos"
+                  value={effectivePlan.reativ > 0 ? fmt(r.recReativacao) : "—"}
+                  sub={effectivePlan.reativ > 0 ? "~" + r.reativados + " pacientes reativados/mês (5% da base)" : "Disponível nos planos Pro e Max"}
+                  color="#2E7D32"
+                />
               </div>
 
               {/* Big ROI */}
@@ -343,9 +417,10 @@ export default function App() {
                 <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3D5A80", marginBottom: 6 }}>Retorno líquido por mês</div>
                 <div style={{ fontSize: 50, fontWeight: 800, color: r.rc, fontFamily: "'Manrope', monospace", lineHeight: 1 }}>{r.roi >= 0 ? "+" : ""}{fmt(r.roi)}</div>
                 <div style={{ fontSize: 15, color: "#3D5A80", marginTop: 10, lineHeight: 1.8 }}>
-                  {fmt(r.ganhoTotal)} de ganho total − {fmt(plan.price)} plano {plan.name}/mês<br />
+                  {fmt(r.ganhoTotal)} de ganho total − {fmt(effectivePlan.price)} plano {effectivePlan.name} a {fmt(effectivePlan.price)}/mês<br />
                   <strong style={{ color: "#1A3A5C" }}>{fmt(r.roiAnual)}/ano</strong> · <strong style={{ color: "#1A3A5C" }}>{r.mult.toFixed(1)}× o investimento</strong>
                 </div>
+                <div style={{ fontSize: 12, color: "#8FA4B8", marginTop: 6 }}>(calculado com {effectivePlan.name} a {fmt(effectivePlan.price)}/mês)</div>
               </div>
             </div>
 
@@ -364,7 +439,7 @@ export default function App() {
                   <div>→ Isso representa <strong style={{ color: "#0070C0" }}>{((r.minConsultas / r.slots) * 100).toFixed(1)}%</strong> da sua agenda de {r.slots} horários</div>
                   {r.payback && <div>→ A Dentzi se paga {r.payback === 1 ? "no primeiro" : "nos primeiros"} <strong style={{ color: "#0070C0" }}>{r.payback} {r.payback === 1 ? "dia" : "dias"} do mês</strong></div>}
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #C9D6E3", color: "#3D5A80" }}>
-                    Você perde <strong style={{ color: "#E65100" }}>{fmt(r.custoNs)}/mês</strong> em faltas. A Dentzi custa apenas <strong style={{ color: "#E65100" }}>{((plan.price / r.custoNs) * 100).toFixed(1)}%</strong> desse valor.
+                    Você perde <strong style={{ color: "#E65100" }}>{fmt(r.custoNs)}/mês</strong> em faltas. A Dentzi custa apenas <strong style={{ color: "#E65100" }}>{((effectivePlan.price / r.custoNs) * 100).toFixed(1)}%</strong> desse valor.
                   </div>
                 </>}
                 {lowTicket && (
@@ -378,39 +453,40 @@ export default function App() {
               <div style={{ background: "#E8F5E9", border: "2px solid #2E7D3266", borderRadius: 14, padding: 24, textAlign: "center" }}>
                 <div style={{ fontSize: 15, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2E7D32", marginBottom: 10 }}>✓ Faz sentido para o seu perfil</div>
                 <div style={{ fontSize: 17, color: "#1A3A5C", lineHeight: 1.7, maxWidth: 520, margin: "0 auto" }}>
-                  Com <strong>{r.slots} horários/mês</strong> e ticket de <strong>{fmt(ticket)}</strong>, sua clínica recupera <strong style={{ color: "#2E7D32" }}>{fmt(r.ganhoTotal)}</strong> por mês com automação — investindo apenas <strong>{fmt(plan.price)}</strong> no plano <strong>{plan.name}</strong>.
+                  Com <strong>{r.slots} horários/mês</strong> e ticket de <strong>{fmt(ticket)}</strong>, sua clínica recupera <strong style={{ color: "#2E7D32" }}>{fmt(r.ganhoTotal)}</strong> por mês com automação — investindo entre <strong>{fmt(effectivePlan.rangeMin)}</strong> e <strong>{fmt(effectivePlan.rangeMax)}</strong> no plano <strong>{effectivePlan.name}</strong>.
                 </div>
-                <div style={{ marginTop: 14, fontSize: 15, color: "#3D5A80", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  Setup: <SetupBadge plan={plan} /> — incluso na implantação assistida
+                <div style={{ marginTop: 14, fontSize: 15, color: "#3D5A80" }}>
+                  Setup grátis para as primeiras 100 clínicas
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Clínicas Fundadoras */}
+        {/* Dentzi Founders */}
         <div style={{ background: "linear-gradient(135deg, #1A3A5C, #0B5A8C)", borderRadius: 18, padding: "36px 32px", marginTop: 28, textAlign: "center", color: "#fff" }}>
           <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#00D4E8", marginBottom: 10 }}>Dentzi Founders</div>
-          <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.3, marginBottom: 12 }}>Programa Dentzi Founders<br />Estamos em busca das primeiras Clínicas e Dentistas Fundadores</div>
-          <div style={{ fontSize: 15, color: "#C9D6E3", lineHeight: 1.7, maxWidth: 600, margin: "0 auto 20px" }}>
-            As primeiras 10 clínicas terão <strong style={{ color: "#00F5D4" }}>30% de desconto vitalício</strong> na mensalidade e acesso direto aos fundadores para moldar o produto juntos. Venha fazer parte desta revolução.
+          <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.3, marginBottom: 8 }}>Construa o produto com a gente</div>
+          <div style={{ fontSize: 15, color: "#C9D6E3", lineHeight: 1.7, maxWidth: 600, margin: "0 auto 24px" }}>
+            Estamos selecionando as primeiras clínicas para moldar a Dentzi juntos. Você não é só cliente — é co-criador.
           </div>
-          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 6 }}>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
             {[
-              { label: "Starter Fundador", orig: 590, price: 413 },
-              { label: "Plus Fundador", orig: 990, price: 693 },
-              { label: "Pro Fundador", orig: 1990, price: 1393 },
-            ].map(p => (
-              <div key={p.label} style={{ background: "#ffffff15", borderRadius: 10, padding: "14px 22px" }}>
-                <div style={{ fontSize: 12, color: "#00D4E8" }}>{p.label}</div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "center", marginTop: 4 }}>
-                  <span style={{ fontSize: 14, textDecoration: "line-through", color: "#8FA4B8" }}>R$ {p.orig.toLocaleString("pt-BR")}</span>
-                  <span style={{ fontSize: 24, fontWeight: 800 }}>R$ {p.price.toLocaleString("pt-BR")}<span style={{ fontSize: 13, fontWeight: 400 }}>/mês</span></span>
-                </div>
+              { icon: "🔑", title: "Acesso direto aos fundadores", desc: "Canal exclusivo com os criadores. Suas dores viram features." },
+              { icon: "🗳️", title: "Voz no roadmap", desc: "Participe das decisões de produto. Prioridades definidas com você." },
+              { icon: "✨", title: "Condições especiais", desc: "Preço e condições exclusivas, permanentes, para quem acreditou desde o início." },
+            ].map(c => (
+              <div key={c.title} style={{ background: "#ffffff15", borderRadius: 12, padding: "18px 22px", flex: "1 1 200px", maxWidth: 260, textAlign: "center" }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>{c.icon}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 6 }}>{c.title}</div>
+                <div style={{ fontSize: 13, color: "#C9D6E3", lineHeight: 1.5 }}>{c.desc}</div>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: "#8FA4B8" }}>Vagas limitadas · Setup não será cobrado para Clínicas Fundadoras</div>
+          <div style={{ fontSize: 12, color: "#8FA4B8", marginBottom: 16 }}>Vagas limitadas · Programa exclusivo para clínicas selecionadas</div>
+          <a href="https://calendly.com/ericoa-melo/45-min-meeting" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 12, background: "#00D4E8", color: "#1A3A5C", fontSize: 15, fontWeight: 700, textDecoration: "none", boxShadow: "0 4px 14px rgba(0,212,232,0.3)" }}>
+            Quero ser Fundador →
+          </a>
         </div>
 
         {/* CTA */}
@@ -427,7 +503,7 @@ export default function App() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Agendar uma conversa
             </a>
-            <a href="mailto:erico@dentzi.ai?subject=Dentzi%20-%20Interesse%20no%20simulador" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 28px", borderRadius: 12, background: "#fff", color: "#1A3A5C", fontSize: 15, fontWeight: 600, textDecoration: "none", border: "2px solid #C9D6E3" }}>
+            <a href="mailto:contato@dentzi.ai?subject=Dentzi%20-%20Interesse%20no%20simulador" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 28px", borderRadius: 12, background: "#fff", color: "#1A3A5C", fontSize: 15, fontWeight: 600, textDecoration: "none", border: "2px solid #C9D6E3" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               Enviar email
             </a>
@@ -437,7 +513,7 @@ export default function App() {
 
         {/* Footer */}
         <div style={{ fontSize: 13, color: "#8FA4B8", textAlign: "center", paddingTop: 18, paddingBottom: 10, lineHeight: 1.8 }}>
-          Custo real da falta = lucro cessante + custo fixo da hora parada · Premissa de melhoria sobre consultas realizadas · Reativação: 5% das consultas realizadas · Setup não incluído no cálculo mensal
+          Custo real da falta = lucro cessante + custo fixo da hora parada · Premissa de melhoria sobre consultas realizadas · Reativação: 5% das consultas realizadas · Modelo em validação — preços sujeitos a ajuste
         </div>
       </div>
     </div>
